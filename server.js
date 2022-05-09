@@ -10,10 +10,9 @@ app.use(cors());
 app.use(express.json());
 app.set('json spaces', 2);
 
+// MongoDB Credentials
 const admin = process.env.DB_USER;
 const password = process.env.DB_PASS;
-
-
 const uri = `mongodb+srv://${admin}:${password}@cluster0.qthbe.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, 
     { 
@@ -21,11 +20,12 @@ const client = new MongoClient(uri,
         useUnifiedTopology: true
 });
 
+// API ENDPOINTS
 async function run() {
     try {
 
         await client.connect();
-        console.log('Connected Successfully!!');
+        console.log('DataBase Connected Successfully!!');
 
         const database = client.db("warehouse");
         const productCollection = database.collection("products");
@@ -39,7 +39,16 @@ async function run() {
             const products = await cursor.toArray();
             console.log("Sending products to client");
             res.json(products);
-        })
+        });
+        // GET API for One Product
+        app.get("/products/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectID(id) };
+            const product = await productCollection.findOne(query);
+            console.log("Sending One service to client");
+            res.json(product);
+        });
+
         // FeedBack GET API
         app.get("/feedback", async (req, res) => {
             const query = {};
@@ -49,46 +58,41 @@ async function run() {
             res.json(feedback);
         })
 
-        // GET API for One Product
-        app.get("/products/:id", async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: ObjectID(id) };
-            const product = await productCollection.findOne(query);
-            console.log("Sending One service to client");
-            res.json(product);
-        })
 
         // POST API Add new products
-
         app.post("/products", async (req, res) => {
             const product = req.body;
-            // const options = { ordered: true };
-            // const result = await productCollection.insertMany(products, options);
             const result = await productCollection.insertOne(product);
-            // console.log(result);
-            // res.send(result);
+            res.send(result);
+        });
+        // DELETE API for Product
+        app.delete("/products/:id", async (req, res) => {
+            const id = req.params.id;
+            const result = await productCollection.deleteOne({_id:ObjectID(id)});
+            console.log(result)
             res.send(result);
         });
 
-        // POST API
+        // POST API to my items
         app.post("/myitems", async (req, res) => {
-            const id = req.body.id;
+            const {id,user} = req.body;
             const product = {
-                product_id : ObjectID(id)
+                product_id : ObjectID(id),
+                user
             }
-            // const options = { ordered: true };
-            // const result = await myitemsCollection.insertMany(products, options);
             const result = await myitemsCollection.insertOne(product);
             console.log(result);
-            // res.send(result);
             res.send(result);
         });
+
         // Get all my items
-        app.get("/myitems", async (req, res) => {
-            
-            const cursor = myitemsCollection.find({});
-            const items = await cursor.toArray();
+        app.get("/myitems/:email", async (req, res) => {
             const productsId = [];
+            const email = req.params.email;
+
+            const cursor = myitemsCollection.find({user:email});
+            const items = await cursor.toArray();
+            
             items.map((item)=>{
                 productsId.push(item.product_id)
             });
@@ -97,10 +101,12 @@ async function run() {
             const products = await productcursor.toArray();
             res.json(products);
         })
+
         // Delete My items
-        app.delete("/myitems/:id", async (req, res) => {
-            const id = req.params.id;
-            const query = { "product_id": ObjectID(id) };
+        app.delete("/myitems/:user/:id", async (req, res) => {
+            const {id,user} = req.params;
+            const query = { "product_id": ObjectID(id),user };
+
             const result = await myitemsCollection.deleteMany(query);
             if (result.deletedCount > 0) {
                 console.log("Delete Successful");
@@ -113,7 +119,7 @@ async function run() {
         })
 
 
-        // 
+        // UPDATE Stock 
         app.put("/products/:id", async (req, res) => {
                 const id = req.params.id;
                 const query = { _id: ObjectID(id) };
