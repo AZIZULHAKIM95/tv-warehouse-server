@@ -69,7 +69,6 @@ async function run() {
         app.delete("/products/:id", async (req, res) => {
             const id = req.params.id;
             const result = await productCollection.deleteOne({_id:ObjectID(id)});
-            console.log(result)
             res.send(result);
         });
 
@@ -81,7 +80,6 @@ async function run() {
                 user
             }
             const result = await myitemsCollection.insertOne(product);
-            console.log(result);
             res.send(result);
         });
 
@@ -108,14 +106,10 @@ async function run() {
             const query = { "product_id": ObjectID(id),user };
 
             const result = await myitemsCollection.deleteMany(query);
-            if (result.deletedCount > 0) {
-                console.log("Delete Successful");
-                res.json(result);
-            }
-            else {
-                console.log("Couldn't Delete");
-                res.json(result);
-            }
+            
+            res.json(result);
+          
+  
         })
 
 
